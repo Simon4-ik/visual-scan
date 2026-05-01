@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Scan — Document Scanner</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Visual Scan</h1>
+    <p class="tagline">Upload, OCR, classify, summarize.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="scan" role="tab">Upload &amp; Scan</button>
+    <button class="tab" data-tab="results" role="tab">Scanned Results</button>
+  </nav>
+
+  <main>
+    <!-- ========== SCAN TAB ========== -->
+    <section id="tab-scan" class="tab-panel active">
+      <div class="card">
+        <h2>1. Choose an image</h2>
+        <div class="row">
+          <label class="btn">
+            <input type="file" id="file-input" accept="image/*" hidden />
+            Upload image
+          </label>
+          <button id="btn-camera" class="btn secondary">Use webcam</button>
+          <button id="btn-stop-camera" class="btn ghost" hidden>Stop camera</button>
+          <button id="btn-capture" class="btn" hidden>Capture</button>
+        </div>
+        <video id="video" autoplay playsinline hidden></video>
+      </div>
+
+      <div class="card">
+        <h2>2. Preview &amp; preprocess</h2>
+        <div class="canvas-wrap">
+          <div class="canvas-stage" id="canvas-stage">
+            <canvas id="canvas"></canvas>
+            <div class="crop-overlay" id="crop-overlay">
+              <div class="crop-rect" id="crop-rect"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <button id="btn-rotate-l" class="btn ghost" disabled>↺ Rotate left</button>
+          <button id="btn-rotate-r" class="btn ghost" disabled>↻ Rotate right</button>
+          <button id="btn-grayscale" class="btn ghost" disabled>Grayscale</button>
+          <button id="btn-threshold" class="btn ghost" disabled>Threshold</button>
+          <button id="btn-crop" class="btn ghost" disabled>✂ Crop</button>
+          <button id="btn-reset" class="btn ghost" disabled>Reset</button>
+        </div>
+        <p class="hint" id="crop-hint" hidden>Drag on the image to select an area. Release to crop.</p>
+      </div>
+
+      <div class="card">
+        <h2>3. Run OCR</h2>
+        <div class="row">
+          <label for="lang-select" class="label inline">Language</label>
+          <select id="lang-select" class="select">
+            <option value="eng" selected>English</option>
+            <option value="rus">Russian</option>
+            <option value="spa">Spanish</option>
+            <option value="fra">French</option>
+            <option value="deu">German</option>
+            <option value="ita">Italian</option>
+            <option value="por">Portuguese</option>
+            <option value="chi_sim">Chinese (Simplified)</option>
+            <option value="jpn">Japanese</option>
+            <option value="ara">Arabic</option>
+            <option value="eng+rus">English + Russian</option>
+            <option value="eng+spa">English + Spanish</option>
+          </select>
+          <button id="btn-ocr" class="btn primary" disabled>Extract text (client-side)</button>
+          <button id="btn-ocr-server" class="btn secondary" disabled>Extract text (server-side)</button>
+        </div>
+        <div id="ocr-progress" class="progress" hidden>
+          <div class="progress-bar" id="ocr-progress-bar"></div>
+          <span id="ocr-progress-label">Initializing…</span>
+        </div>
+        <label for="ocr-text" class="label">Extracted text (editable)</label>
+        <textarea id="ocr-text" rows="10" placeholder="Extracted text will appear here…"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>4. Analyze with AI</h2>
+        <div class="row">
+          <button id="btn-classify" class="btn primary" disabled>Classify</button>
+          <button id="btn-summarize" class="btn primary" disabled>Summarize</button>
+          <button id="btn-extract" class="btn secondary" disabled>Extract fields</button>
+          <button id="btn-save" class="btn success" disabled>Save scan</button>
+        </div>
+
+        <div id="ai-results" class="ai-results">
+          <div class="ai-card highlight" id="classification-card" hidden>
+            <div class="ai-card-header">
+              <span class="ai-badge">Classification</span>
+            </div>
+            <div class="ai-card-body">
+              <p class="ai-main"><span id="cls-type">—</span>
+                <small id="cls-confidence"></small></p>
+              <p class="ai-rationale" id="cls-rationale"></p>
+            </div>
+          </div>
+
+          <div class="ai-card highlight" id="summary-card" hidden>
+            <div class="ai-card-header">
+              <span class="ai-badge">Summary</span>
+            </div>
+            <div class="ai-card-body">
+              <p id="sum-summary"></p>
+              <ul id="sum-keypoints"></ul>
+            </div>
+          </div>
+
+          <div class="ai-card highlight" id="extract-card" hidden>
+            <div class="ai-card-header">
+              <span class="ai-badge">Extracted fields</span>
+            </div>
+            <div class="ai-card-body">
+              <dl id="extract-fields"></dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== RESULTS TAB ========== -->
+    <section id="tab-results" class="tab-panel">
+      <div class="card">
+        <div class="row between">
+          <h2>Scanned documents</h2>
+          <div class="row">
+            <input type="search" id="filter-input" placeholder="Filter by text or type…" />
+            <button id="btn-refresh" class="btn ghost">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th data-sort="filename">Filename</th>
+                <th data-sort="scanned_at">Date scanned</th>
+                <th data-sort="text">Text snippet</th>
+                <th data-sort="classification">Classification</th>
+                <th data-sort="summary">Summary</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="results-body">
+              <tr><td colspan="6" class="empty">No scans yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
