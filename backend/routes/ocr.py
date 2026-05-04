@@ -2,6 +2,7 @@ import io
 import os
 import shutil
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
@@ -16,7 +17,7 @@ _WINDOWS_GUESSES = (
 )
 
 
-def _resolve_tesseract_cmd() -> str | None:
+def _resolve_tesseract_cmd() -> Optional[str]:
     explicit = os.getenv("TESSERACT_CMD")
     if explicit and Path(explicit).exists():
         return explicit
